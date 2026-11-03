@@ -22,6 +22,7 @@ import { TutorialViewer } from './components/TutorialViewer';
 import { AuditViewer } from './components/AuditViewer';
 import { UpdateCenter } from './components/UpdateCenter';
 import { NativeExportModal } from './components/NativeExportModal';
+import { GitModal } from './components/GitModal';
 import {
   WorkspaceService,
   UserProject,
@@ -56,6 +57,7 @@ export default function App() {
   const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
   const [showExportModal, setShowExportModal] = useState<boolean>(false);
   const [showRulesModal, setShowRulesModal] = useState<boolean>(false);
+  const [showGitModal, setShowGitModal] = useState<boolean>(false);
   const [activeModalView, setActiveModalView] = useState<'samples' | 'tutorials' | 'audit' | 'updates' | null>(null);
 
   // GitHub Live Synchronization State
@@ -115,6 +117,28 @@ export default function App() {
     }
     return map;
   }, [activeProject]);
+
+  // Sync files from Git or Terminal
+  const handleUpdateProjectFiles = useCallback((filesMap: Record<string, string>) => {
+    if (!activeProject) return;
+    WorkspaceService.syncFiles(activeProject.id, filesMap);
+    const updated = WorkspaceService.getProjects();
+    setProjects(updated);
+  }, [activeProject]);
+
+  // Clone repo callback
+  const handleCloneSuccess = useCallback((projectName: string, filesMap: Record<string, string>) => {
+    const newProj = WorkspaceService.createProject(projectName, 'Cloned Git Repository');
+    WorkspaceService.syncFiles(newProj.id, filesMap);
+    const updated = WorkspaceService.getProjects();
+    setProjects(updated);
+    setActiveProjectId(newProj.id);
+    const p = updated.find((x) => x.id === newProj.id);
+    if (p && p.files.length > 0) {
+      setActiveFileId(p.files[0].id);
+    }
+    setShowGitModal(false);
+  }, []);
 
   // Code change with undo tracking
   const handleCodeChange = (newCode: string) => {
@@ -203,6 +227,9 @@ export default function App() {
         }
         break;
       }
+      case 'git':
+        setShowGitModal(true);
+        break;
       case 'rules':
         setShowRulesModal(true);
         break;
@@ -352,10 +379,12 @@ export default function App() {
         fileName={activeFile?.name || 'main.aayu'}
         result={executionResult}
         isRunning={isRunning}
+        activeProject={activeProject}
+        onUpdateProjectFiles={handleUpdateProjectFiles}
         onSendStdin={(input) => {
-          if (!activeFile) return;
           setIsRunning(true);
-          const res = AayuRunner.run(activeFile.content, {
+          const codeToRun = input.trim() ? input : (activeFile?.content || '');
+          const res = AayuRunner.run(codeToRun, {
             stdin: input,
             virtualFiles: getVirtualFilesMap(),
           });
@@ -439,6 +468,10 @@ export default function App() {
                     setProjects(WorkspaceService.getProjects());
                   }}
                   onLoadExample={handleLoadExample}
+                  onOpenGitModal={() => {
+                    setActiveModalView(null);
+                    setShowGitModal(true);
+                  }}
                 />
               )}
 
@@ -458,6 +491,15 @@ export default function App() {
       <NativeExportModal
         isOpen={showExportModal}
         onClose={() => setShowExportModal(false)}
+      />
+
+      {/* 11. Git Source Control Modal */}
+      <GitModal
+        isOpen={showGitModal}
+        onClose={() => setShowGitModal(false)}
+        activeProject={activeProject}
+        onUpdateFiles={handleUpdateProjectFiles}
+        onCloneSuccess={handleCloneSuccess}
       />
     </div>
   );

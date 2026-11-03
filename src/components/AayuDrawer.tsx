@@ -22,6 +22,7 @@ import {
   X,
   ExternalLink,
   HelpCircle,
+  FolderGit2,
 } from 'lucide-react';
 import { AayuLogo } from './AayuLogo';
 
@@ -30,6 +31,7 @@ export type DrawerAction =
   | 'open'
   | 'save'
   | 'saveAs'
+  | 'git'
   | 'rules'
   | 'samples'
   | 'tutorials'
@@ -150,6 +152,17 @@ export const AayuDrawer: React.FC<AayuDrawerProps> = ({
           >
             <Terminal className="w-4 h-4 text-emerald-400" />
             <span>AAYU Terminal</span>
+          </button>
+
+          <button
+            onClick={() => {
+              onAction('git');
+              onClose();
+            }}
+            className="w-full flex items-center gap-3.5 px-5 py-2.5 hover:bg-[#232532] text-slate-200 transition-colors"
+          >
+            <FolderGit2 className="w-4 h-4 text-orange-400" />
+            <span>Git Source Control</span>
           </button>
 
           <button

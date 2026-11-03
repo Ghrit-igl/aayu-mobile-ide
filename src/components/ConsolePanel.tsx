@@ -259,7 +259,21 @@ export const ConsolePanel: React.FC<ConsolePanelProps> = ({
                 {/* Returned Value if expression */}
                 {result.returnedValue !== undefined && result.returnedValue !== null && (
                   <div className="text-cyan-400 pt-1">
-                    =&gt; {JSON.stringify(result.returnedValue)}
+                    =&gt; {typeof result.returnedValue === 'object' ? JSON.stringify(result.returnedValue) : String(result.returnedValue)}
+                  </div>
+                )}
+
+                {/* Variable State fallback if stdout is empty */}
+                {result.variablesState && Object.keys(result.variablesState).filter(k => !k.startsWith('__')).length > 0 && !result.stdout && (
+                  <div className="text-emerald-400 pt-1 space-y-0.5">
+                    {Object.entries(result.variablesState)
+                      .filter(([k]) => !k.startsWith('__'))
+                      .map(([k, v]) => (
+                        <div key={k}>
+                          <span className="text-slate-400">{k} = </span>
+                          <span>{typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v)}</span>
+                        </div>
+                      ))}
                   </div>
                 )}
               </>

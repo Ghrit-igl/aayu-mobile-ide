@@ -30,8 +30,10 @@ export class Compiler {
   private chunk: BytecodeChunk;
   private loopBreakJumps: number[][] = [];
   private loopContinueTargets: number[] = [];
+  private isTopLevel: boolean;
 
-  constructor() {
+  constructor(isTopLevel = true) {
+    this.isTopLevel = isTopLevel;
     this.chunk = {
       instructions: [],
       constants: [],
@@ -43,36 +45,46 @@ export class Compiler {
   }
 
   compile(program: ProgramNode): BytecodeChunk {
-    for (const stmt of program.body) {
-      this.compileStatement(stmt);
+    for (let i = 0; i < program.body.length; i++) {
+      const stmt = program.body[i];
+      const isLast = this.isTopLevel && (i === program.body.length - 1);
+      this.compileStatement(stmt, isLast);
     }
     this.emit(OpCode.OP_HALT, undefined, program.loc.line);
     return this.chunk;
   }
 
-  private compileStatement(node: ASTNode): void {
+  private compileStatement(node: ASTNode, isLastTopLevel = false): void {
     switch (node.kind) {
       case 'Program':
-        for (const s of node.body) this.compileStatement(s);
+        for (let i = 0; i < node.body.length; i++) {
+          const s = node.body[i];
+          const isLast = isLastTopLevel && (i === node.body.length - 1);
+          this.compileStatement(s, isLast);
+        }
         break;
 
       case 'VarDecl':
         this.compileExpression(node.init);
-        this.emit(OpCode.OP_STORE_VAR, node.name, node.loc.line);
+        this.emit(OpCode.OP_STORE_VAR, { name: node.name, isDecl: true }, node.loc.line);
         break;
 
       case 'Assignment':
-        this.compileExpression(node.value);
         if (node.target.kind === 'IdentifierExpr') {
           if (node.operator === '+=') {
             this.emit(OpCode.OP_LOAD_VAR, node.target.name, node.loc.line);
+            this.compileExpression(node.value);
             this.emit(OpCode.OP_ADD, undefined, node.loc.line);
           } else if (node.operator === '-=') {
             this.emit(OpCode.OP_LOAD_VAR, node.target.name, node.loc.line);
+            this.compileExpression(node.value);
             this.emit(OpCode.OP_SUB, undefined, node.loc.line);
+          } else {
+            this.compileExpression(node.value);
           }
-          this.emit(OpCode.OP_STORE_VAR, node.target.name, node.loc.line);
+          this.emit(OpCode.OP_STORE_VAR, { name: node.target.name, isDecl: false }, node.loc.line);
         } else if (node.target.kind === 'IndexExpr') {
+          this.compileExpression(node.value);
           this.compileExpression(node.target.target);
           this.compileExpression(node.target.index);
           this.emit(OpCode.OP_INDEX_SET, undefined, node.loc.line);
@@ -81,11 +93,13 @@ export class Compiler {
 
       case 'ExpressionStmt':
         this.compileExpression(node.expression);
-        this.emit(OpCode.OP_POP, undefined, node.loc.line);
+        if (!isLastTopLevel) {
+          this.emit(OpCode.OP_POP, undefined, node.loc.line);
+        }
         break;
 
       case 'FunctionDecl': {
-        const fnCompiler = new Compiler();
+        const fnCompiler = new Compiler(false);
         const fnChunk = fnCompiler.compile({
           kind: 'Program',
           body: node.body,
@@ -309,7 +323,7 @@ export class Compiler {
           }
           break;
         }
-        const routeCompiler = new Compiler();
+        const routeCompiler = new Compiler(false);
         const routeChunk = routeCompiler.compile({
           kind: 'Program',
           body: node.body,
@@ -524,7 +538,11 @@ export class Compiler {
         if (inst.op === OpCode.OP_CONSTANT) {
           argStr = `${inst.arg} (${JSON.stringify(chunk.constants[inst.arg])})`;
         } else if (typeof inst.arg === 'object') {
-          argStr = JSON.stringify(inst.arg);
+          if (inst.arg && 'name' in inst.arg && 'isDecl' in inst.arg) {
+            argStr = `${inst.arg.name}${inst.arg.isDecl ? ' [decl]' : ''}`;
+          } else {
+            argStr = JSON.stringify(inst.arg);
+          }
         } else {
           argStr = String(inst.arg);
         }

@@ -1,7 +1,12 @@
-﻿# AAYU Mobile IDE for Android (Intent-to-Silicon)
+# AAYU Mobile IDE for Android (Intent-to-Silicon)
 
-> **Write your intent. Run on mobile silicon.**
+> **Write your intent. Run on mobile silicon.**  
 > The official Android-optimized development environment for the **AAYU Programming Language** (inspired by Pydroid 3, modernized for 2026).
+
+[![AAYU Engine](https://img.shields.io/badge/AAYU-Intent--to--Silicon-00FFA3?style=for-the-badge&logo=rust&logoColor=black)](https://github.com/Ghrit-igl)
+[![React 19](https://img.shields.io/badge/React-19.0-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Android](https://img.shields.io/badge/Platform-Android%20%7C%20PWA%20%7C%20Termux-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://android.com)
 
 ---
 
@@ -9,7 +14,7 @@
 
 - **📱 Zero-Dependency Execution**: Run real AAYU code on your Android device (ARM64-v8a / x86_64) without root or Python.
 - **⌨️ Touch-Optimized Symbol Strip**: Dedicated keyboard bar with instant brackets `{ } ( ) [ ]`, math operators, and D-pad cursor arrows.
-- **🔄 GitHub Live Auto-Update**: Checks `Minato95-ayu/INTENT-TO-SILICON` repository releases. When new bytecode compiler releases or lessons drop on GitHub, one-click verify & hot-reload keeps your mobile IDE up to date.
+- **🔄 GitHub Live Auto-Update**: Checks official AAYU repository releases. When new bytecode compiler releases or lessons drop on GitHub, one-click verify & hot-reload keeps your mobile IDE up to date.
 - **📦 Android Studio Export**: Scaffold a complete Android Studio project (Kotlin + Jetpack Compose) running native AAYU bytecode in seconds.
 - **📚 Interactive Zero-to-Silicon Tutorials**: Built-in 21-chapter course with instant runnable code examples.
 - **🎨 Silicon Dark Theme**: High-contrast, battery-friendly dark theme optimized for OLED mobile screens.
@@ -20,7 +25,7 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/Minato95-ayu/INTENT-TO-SILICON.git
+git clone https://github.com/Ghrit-igl/aayu-mobile-ide.git
 
 # Navigate to the mobile IDE directory
 cd aayu-mobile-ide
@@ -62,7 +67,7 @@ Visit `http://localhost:3000` or open from your Android mobile browser/Termux!
 │  (Lexer / Parser / VM)   │  (ARM64-v8a / Rust VM)      │
 ├──────────────────────────┴─────────────────────────────┤
 │             GitHub Live Sync & Auto-Update             │
-│   (Polls Minato95-ayu/INTENT-TO-SILICON releases)      │
+│          (Polls AAYU Language official releases)       │
 └────────────────────────────────────────────────────────┘
 ```
 
@@ -71,3 +76,4 @@ Visit `http://localhost:3000` or open from your Android mobile browser/Termux!
 ## 📄 License
 
 Apache-2.0 © 2026 Ayush Ghrit Kaushik & AAYU Language Contributors.
+

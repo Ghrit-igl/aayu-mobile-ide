@@ -406,6 +406,7 @@ export interface ExecutionResult {
     activeHeapObjects: number;
   };
   returnedValue?: any;
+  variablesState?: Record<string, any>;
   databaseState?: Record<string, any[]>;
   registeredRoutes?: { method: string; path: string; chunk?: BytecodeChunk }[];
   uiTree?: any;

@@ -6,6 +6,8 @@
  * Preserves user projects across sessions and application updates.
  */
 
+import JSZip from 'jszip';
+
 export interface ProjectFile {
   id: string;
   name: string;
@@ -37,9 +39,33 @@ println("Result:", result)
 
 export class WorkspaceService {
   private static STORAGE_KEY = 'aayu_mobile_ide_workspace_v1';
+  private static memoryStore: Record<string, string> = {};
+
+  private static getItem(key: string): string | null {
+    if (typeof localStorage !== 'undefined') {
+      try {
+        return localStorage.getItem(key);
+      } catch {
+        // fallback
+      }
+    }
+    return this.memoryStore[key] || null;
+  }
+
+  private static setItem(key: string, value: string): void {
+    if (typeof localStorage !== 'undefined') {
+      try {
+        localStorage.setItem(key, value);
+        return;
+      } catch {
+        // fallback
+      }
+    }
+    this.memoryStore[key] = value;
+  }
 
   static getProjects(): UserProject[] {
-    const raw = localStorage.getItem(this.STORAGE_KEY);
+    const raw = this.getItem(this.STORAGE_KEY);
     if (raw) {
       try {
         const parsed = JSON.parse(raw);
@@ -75,7 +101,7 @@ export class WorkspaceService {
   }
 
   static saveProjects(projects: UserProject[]): void {
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(projects));
+    this.setItem(this.STORAGE_KEY, JSON.stringify(projects));
   }
 
   static getActiveProject(): UserProject {
@@ -134,6 +160,69 @@ export class WorkspaceService {
     return true;
   }
 
+  static renameFile(projectId: string, fileId: string, newName: string): boolean {
+    const projects = this.getProjects();
+    const proj = projects.find(p => p.id === projectId);
+    if (!proj) return false;
+    const file = proj.files.find(f => f.id === fileId);
+    if (!file) return false;
+
+    let finalName = newName.trim();
+    if (!finalName.endsWith('.aayu')) finalName += '.aayu';
+    file.name = finalName;
+    file.lastModified = Date.now();
+    this.saveProjects(projects);
+    return true;
+  }
+
+  static duplicateFile(projectId: string, fileId: string): ProjectFile | null {
+    const projects = this.getProjects();
+    const proj = projects.find(p => p.id === projectId);
+    if (!proj) return null;
+    const file = proj.files.find(f => f.id === fileId);
+    if (!file) return null;
+
+    const baseName = file.name.replace(/\.aayu$/, '');
+    const copyName = `${baseName}_copy.aayu`;
+    return this.addFile(projectId, copyName, file.content);
+  }
+
+  static downloadFile(file: ProjectFile): void {
+    const blob = new Blob([file.content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = file.name.endsWith('.aayu') ? file.name : `${file.name}.aayu`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  static async exportProjectZip(projectId: string): Promise<void> {
+    const projects = this.getProjects();
+    const proj = projects.find(p => p.id === projectId);
+    if (!proj) return;
+
+    const zip = new JSZip();
+    const folderName = proj.name.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const folder = zip.folder(folderName) || zip;
+
+    for (const f of proj.files) {
+      folder.file(f.name, f.content);
+    }
+
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(zipBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${folderName}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   static createProject(name: string, description = ''): UserProject {
     const projects = this.getProjects();
     const newProj: UserProject = {
@@ -155,6 +244,29 @@ export class WorkspaceService {
     projects.unshift(newProj);
     this.saveProjects(projects);
     return newProj;
+  }
+
+  static syncFiles(projectId: string, filesMap: Record<string, string>): void {
+    const projects = this.getProjects();
+    const proj = projects.find(p => p.id === projectId);
+    if (!proj) return;
+
+    for (const [name, content] of Object.entries(filesMap)) {
+      const existing = proj.files.find(f => f.name === name);
+      if (existing) {
+        existing.content = content;
+        existing.lastModified = Date.now();
+      } else {
+        proj.files.push({
+          id: `file-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          name,
+          content,
+          lastModified: Date.now(),
+        });
+      }
+    }
+    proj.lastOpenedAt = Date.now();
+    this.saveProjects(projects);
   }
 
   static deleteProject(projectId: string): boolean {

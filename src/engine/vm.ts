@@ -55,8 +55,42 @@ export class AayuVM {
   private allocatedObjects = 0;
   private sweptObjects = 0;
 
-  // Standard library built-ins
+  // Standard library built-ins (std/math, std/collections, std/crypto, std/tokens, std/contracts, std/test)
   private builtins: Record<string, (...args: any[]) => any> = {
+    // --- Math & Scientific Built-ins ---
+    sqrt: (x: any) => Math.sqrt(Number(x)),
+    math_sqrt: (x: any) => Math.sqrt(Number(x)),
+    exp: (x: any) => Math.exp(Number(x)),
+    math_exp: (x: any) => Math.exp(Number(x)),
+    ln: (x: any) => Math.log(Number(x)),
+    math_ln: (x: any) => Math.log(Number(x)),
+    sin: (x: any) => Math.sin(Number(x)),
+    math_sin: (x: any) => Math.sin(Number(x)),
+    cos: (x: any) => Math.cos(Number(x)),
+    math_cos: (x: any) => Math.cos(Number(x)),
+    tan: (x: any) => Math.tan(Number(x)),
+    math_tan: (x: any) => Math.tan(Number(x)),
+    tanh: (x: any) => Math.tanh(Number(x)),
+    math_tanh: (x: any) => Math.tanh(Number(x)),
+    pow: (x: any, y: any) => Math.pow(Number(x), Number(y)),
+    math_pow: (x: any, y: any) => Math.pow(Number(x), Number(y)),
+    abs: (val: any) => Math.abs(Number(val)),
+    round: (val: any) => Math.round(Number(val)),
+    floor: (val: any) => Math.floor(Number(val)),
+    ceil: (val: any) => Math.ceil(Number(val)),
+    clamp: (val: any, min: any, max: any) => Math.min(Math.max(Number(val), Number(min)), Number(max)),
+    relu: (x: any) => Math.max(0, Number(x)),
+    sigmoid: (x: any) => 1 / (1 + Math.exp(-Number(x))),
+    min: (...args: any[]) => {
+      const flattened = args.flat();
+      return Math.min(...flattened.map(Number));
+    },
+    max: (...args: any[]) => {
+      const flattened = args.flat();
+      return Math.max(...flattened.map(Number));
+    },
+
+    // --- Collections & Arrays ---
     range: (start: number, end?: number, step = 1) => {
       this.trackAlloc();
       if (end === undefined) {
@@ -79,22 +113,150 @@ export class AayuVM {
       if (typeof obj === 'object' && obj !== null) return Object.keys(obj).length;
       return 0;
     },
+    sum: (arr: any) => {
+      if (!Array.isArray(arr)) return 0;
+      return arr.reduce((acc, curr) => acc + Number(curr), 0);
+    },
+    mean: (arr: any) => {
+      if (!Array.isArray(arr) || arr.length === 0) return 0;
+      return arr.reduce((acc, curr) => acc + Number(curr), 0) / arr.length;
+    },
+    sorted: (arr: any) => {
+      if (!Array.isArray(arr)) return [];
+      this.trackAlloc();
+      return [...arr].sort((a, b) => (a > b ? 1 : a < b ? -1 : 0));
+    },
+    reversed: (arr: any) => {
+      if (!Array.isArray(arr)) return [];
+      this.trackAlloc();
+      return [...arr].reverse();
+    },
+    unique: (arr: any) => {
+      if (!Array.isArray(arr)) return [];
+      this.trackAlloc();
+      return Array.from(new Set(arr));
+    },
+    array_min: (arr: any) => {
+      if (!Array.isArray(arr) || arr.length === 0) return 0;
+      return Math.min(...arr.map(Number));
+    },
+    array_max: (arr: any) => {
+      if (!Array.isArray(arr) || arr.length === 0) return 0;
+      return Math.max(...arr.map(Number));
+    },
+    contains: (container: any, item: any) => {
+      if (Array.isArray(container) || typeof container === 'string') {
+        return container.includes(item);
+      }
+      if (typeof container === 'object' && container !== null) {
+        return item in container;
+      }
+      return false;
+    },
+
+    // --- Crypto & Security (std/crypto) ---
+    hash_string: (str: any) => AayuVM.sha256(String(str)),
+    sha256: (str: any) => AayuVM.sha256(String(str)),
+
+    // --- AI Agent Tokenomics (std/tokens) ---
+    estimate_tokens: (text: any) => {
+      const s = String(text || '');
+      return Math.max(1, Math.ceil(s.length / 3.8));
+    },
+    compress_ai_context: (prompt: any, maxTokens = 1000) => {
+      let s = String(prompt || '');
+      // Strip comments and redundant blank lines
+      s = s
+        .split('\n')
+        .map(l => l.trim())
+        .filter(l => l.length > 0 && !l.startsWith('#') && !l.startsWith('//'))
+        .join(' ');
+      const maxChars = Math.max(1, Math.floor(Number(maxTokens) * 3.8));
+      if (s.length > maxChars) {
+        s = s.substring(0, maxChars);
+      }
+      return s;
+    },
+
+    // --- Contracts, Assertions & Testing (std/contracts, std/test) ---
+    require: (cond: any, msg = 'Precondition requirement failed') => {
+      if (!cond) throw new VMRuntimeError(`[Require Error] ${msg}`, this.currentLine());
+      return true;
+    },
+    ensure: (cond: any, msg = 'Postcondition check failed') => {
+      if (!cond) throw new VMRuntimeError(`[Ensure Error] ${msg}`, this.currentLine());
+      return true;
+    },
+    invariant: (cond: any, msg = 'Invariant violation') => {
+      if (!cond) throw new VMRuntimeError(`[Invariant Error] ${msg}`, this.currentLine());
+      return true;
+    },
+    assert_eq: (actual: any, expected: any, testName = 'Assertion') => {
+      const actStr = typeof actual === 'object' ? JSON.stringify(actual) : String(actual);
+      const expStr = typeof expected === 'object' ? JSON.stringify(expected) : String(expected);
+      if (actStr !== expStr) {
+        throw new VMRuntimeError(`Assertion failed [${testName}]: expected ${expStr}, got ${actStr}`, this.currentLine());
+      }
+      return true;
+    },
+    assert_true: (cond: any, testName = 'Assertion') => {
+      if (!cond) {
+        throw new VMRuntimeError(`Assertion failed [${testName}]: condition was not true`, this.currentLine());
+      }
+      return true;
+    },
+    test_begin_suite: (name: any) => {
+      this.stdout.push(`\n🧪 === TEST SUITE: ${name} ===\n`);
+      return true;
+    },
+    test_end_suite: () => {
+      this.stdout.push(`✅ === TEST SUITE COMPLETED SUCCESSFULLY ===\n\n`);
+      return true;
+    },
+
+    // --- Types & Conversions ---
     str: (val: any) => (typeof val === 'object' && val !== null ? JSON.stringify(val) : String(val)),
     int: (val: any) => parseInt(val, 10) || 0,
     float: (val: any) => parseFloat(val) || 0,
-    abs: (val: any) => Math.abs(val),
-    min: (...args: any[]) => Math.min(...args),
-    max: (...args: any[]) => Math.max(...args),
     type: (val: any) => {
       if (Array.isArray(val)) return 'array';
       if (val === null) return 'null';
       return typeof val;
     },
-    // Real Native AI K-Means intent without dependencies
+    keys: (val: any) => (typeof val === 'object' && val !== null ? Object.keys(val) : []),
+    values: (val: any) => (typeof val === 'object' && val !== null ? Object.values(val) : []),
+    now: () => Date.now(),
+    time_now: () => Date.now(),
+    time: () => Date.now() / 1000,
+    json_parse: (str: any) => {
+      try { return JSON.parse(str); } catch { return null; }
+    },
+    json_stringify: (obj: any) => JSON.stringify(obj),
+
+    // --- Embedded Database Helpers (std/db) ---
+    db_create_record: (modelName: string, data: any) => {
+      if (!this.database[modelName]) this.database[modelName] = [];
+      const newRec = { id: this.database[modelName].length + 1, ...data };
+      this.database[modelName].push(newRec);
+      this.trackAlloc();
+      return newRec;
+    },
+    db_filter_records: (modelName: string, field: string, val: any) => {
+      const recs = this.database[modelName] || [];
+      return recs.filter(r => r[field] === val);
+    },
+    db_find_by_id: (modelName: string, id: number) => {
+      const recs = this.database[modelName] || [];
+      return recs.find(r => r.id === id) || null;
+    },
+    db_count_records: (modelName: string) => {
+      return (this.database[modelName] || []).length;
+    },
+
+    // --- Native AI K-Means Intent ---
     train_kmeans: (points: number[][], k = 2, maxIter = 20) => {
       this.trackAlloc();
       if (!points || points.length === 0) return { centroids: [], clusters: [] };
-      // Initialize centroids with first k points or random
       const centroids: number[][] = [];
       for (let i = 0; i < Math.min(k, points.length); i++) {
         centroids.push([...points[i]]);
@@ -102,7 +264,6 @@ export class AayuVM {
       let clusters: number[] = new Array(points.length).fill(0);
 
       for (let iter = 0; iter < maxIter; iter++) {
-        // Assign each point to closest centroid
         let changed = false;
         for (let pIdx = 0; pIdx < points.length; pIdx++) {
           const pt = points[pIdx];
@@ -123,8 +284,7 @@ export class AayuVM {
         }
         if (!changed) break;
 
-        // Recalculate centroids
-        const sums = centroids.map(() => [0, 0, 0]); // sumX, sumY, count
+        const sums = centroids.map(() => [0, 0, 0]);
         for (let pIdx = 0; pIdx < points.length; pIdx++) {
           const cIdx = clusters[pIdx];
           sums[cIdx][0] += points[pIdx][0] || 0;
@@ -141,6 +301,69 @@ export class AayuVM {
       return { centroids, clusters, iterations: maxIter };
     },
   };
+
+  /**
+   * Pure JS SHA-256 implementation for zero-dependency browser/mobile crypto
+   */
+  static sha256(ascii: string): string {
+    function rightRotate(value: number, amount: number) {
+      return (value >>> amount) | (value << (32 - amount));
+    }
+    const words: number[] = [];
+    const asciiBitLength = ascii.length * 8;
+    let hash = [
+      0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
+      0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19,
+    ];
+    const k = [
+      0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+      0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+      0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+      0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+      0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+      0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+      0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+      0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+    ];
+
+    for (let c = 0; c < ascii.length; c++) {
+      words[c >> 2] |= (ascii.charCodeAt(c) & 0xff) << (8 * (3 - (c % 4)));
+    }
+    words[asciiBitLength >> 5] |= 0x80 << (24 - (asciiBitLength % 32));
+    words[(((asciiBitLength + 64) >> 9) << 4) + 15] = asciiBitLength;
+
+    for (let i = 0; i < words.length; i += 16) {
+      const w = words.slice(i, i + 16);
+      const oldHash = hash.slice(0);
+
+      for (let j = 0; j < 64; j++) {
+        const w15 = w[j - 15], w2 = w[j - 2];
+        const s0 = rightRotate(w15, 7) ^ rightRotate(w15, 18) ^ (w15 >>> 3);
+        const s1 = rightRotate(w2, 17) ^ rightRotate(w2, 19) ^ (w2 >>> 10);
+        w[j] = j < 16 ? w[j] : (w[j - 16] + s0 + w[j - 7] + s1) | 0;
+
+        const ch = (hash[4] & hash[5]) ^ (~hash[4] & hash[6]);
+        const maj = (hash[0] & hash[1]) ^ (hash[0] & hash[2]) ^ (hash[1] & hash[2]);
+        const temp1 = (hash[7] + (rightRotate(hash[4], 6) ^ rightRotate(hash[4], 11) ^ rightRotate(hash[4], 25)) + ch + k[j] + w[j]) | 0;
+        const temp2 = ((rightRotate(hash[0], 2) ^ rightRotate(hash[0], 13) ^ rightRotate(hash[0], 22)) + maj) | 0;
+
+        hash = [(temp1 + temp2) | 0, hash[0], hash[1], hash[2], (hash[3] + temp1) | 0, hash[4], hash[5], hash[6]];
+      }
+
+      for (let j = 0; j < 8; j++) {
+        hash[j] = (hash[j] + oldHash[j]) | 0;
+      }
+    }
+
+    let result = '';
+    for (let i = 0; i < 8; i++) {
+      for (let j = 3; j >= 0; j--) {
+        const b = (hash[i] >> (8 * j)) & 255;
+        result += (b < 16 ? '0' : '') + b.toString(16);
+      }
+    }
+    return result;
+  }
 
   private trackAlloc(): void {
     this.allocatedObjects++;
@@ -213,6 +436,24 @@ export class AayuVM {
       }
 
       const durationMs = parseFloat((performance.now() - this.startTime).toFixed(2));
+      const mainVars = { ...(mainFrame?.variables || {}) };
+
+      // Auto-echo if stdout is empty to provide immediate visual feedback (e.g. 'a = 7' or '7 + 3')
+      if (this.stdout.length === 0) {
+        if (returnedValue !== undefined && returnedValue !== null) {
+          const formatted = typeof returnedValue === 'object' ? JSON.stringify(returnedValue) : String(returnedValue);
+          this.stdout.push(`=> ${formatted}\n`);
+        } else {
+          const userVars = Object.entries(mainVars).filter(([k]) => !k.startsWith('__'));
+          if (userVars.length > 0) {
+            for (const [k, v] of userVars) {
+              const formatted = typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v);
+              this.stdout.push(`${k} = ${formatted}\n`);
+            }
+          }
+        }
+      }
+
       return {
         success: true,
         stdout: this.stdout.join(''),
@@ -226,6 +467,7 @@ export class AayuVM {
           activeHeapObjects: Math.max(0, this.allocatedObjects - this.sweptObjects),
         },
         returnedValue,
+        variablesState: mainVars,
         databaseState: this.database,
         registeredRoutes: Object.values(this.routes).map(r => ({ method: r.method, path: r.path, chunk: r.chunk })),
         uiTree: this.uiTree,
@@ -269,10 +511,21 @@ export class AayuVM {
       }
 
       case OpCode.OP_LOAD_VAR: {
-        const varName = inst.arg as string;
-        // Search in local frame variables first
-        if (varName in frame.variables) {
-          this.stack.push(frame.variables[varName]);
+        const varName = typeof inst.arg === 'object' && inst.arg !== null ? inst.arg.name : (inst.arg as string);
+        let foundVal: any = undefined;
+        let hasFound = false;
+
+        // Search lexical call frames from current frame down to global frame (0)
+        for (let f = this.frames.length - 1; f >= 0; f--) {
+          if (varName in this.frames[f].variables) {
+            foundVal = this.frames[f].variables[varName];
+            hasFound = true;
+            break;
+          }
+        }
+
+        if (hasFound) {
+          this.stack.push(foundVal);
         } else if (varName in this.builtins) {
           this.stack.push(this.builtins[varName]);
         } else if (this.lookupFunction(varName)) {
@@ -298,8 +551,6 @@ export class AayuVM {
             }
           };
           this.stack.push(modelObj);
-        } else if (this.frames[0]?.variables && varName in this.frames[0].variables) {
-          this.stack.push(this.frames[0].variables[varName]);
         } else {
           this.stack.push(null);
         }
@@ -307,9 +558,28 @@ export class AayuVM {
       }
 
       case OpCode.OP_STORE_VAR: {
-        const varName = inst.arg as string;
+        const arg = inst.arg;
+        const varName = typeof arg === 'object' && arg !== null ? arg.name : (arg as string);
+        const isDecl = typeof arg === 'object' && arg !== null ? Boolean(arg.isDecl) : false;
         const val = this.stack.pop();
-        frame.variables[varName] = val;
+
+        if (isDecl) {
+          // Explicit declaration ('let' or 'state') binds in current frame
+          frame.variables[varName] = val;
+        } else {
+          // Assignment ('=' or '+=' or '-=') mutates in nearest existing scope
+          let found = false;
+          for (let f = this.frames.length - 1; f >= 0; f--) {
+            if (varName in this.frames[f].variables) {
+              this.frames[f].variables[varName] = val;
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            frame.variables[varName] = val;
+          }
+        }
         break;
       }
 
@@ -549,8 +819,23 @@ export class AayuVM {
             } else if (name === 'pop') {
               this.stack.push(target.pop());
               return false;
+            } else if (name === 'shift') {
+              this.stack.push(target.shift());
+              return false;
             } else if (name === 'len') {
               this.stack.push(target.length);
+              return false;
+            } else if (name === 'join') {
+              this.stack.push(target.join(methodArgs[0] ?? ','));
+              return false;
+            } else if (name === 'includes' || name === 'contains') {
+              this.stack.push(target.includes(methodArgs[0]));
+              return false;
+            } else if (name === 'slice') {
+              this.stack.push(target.slice(methodArgs[0], methodArgs[1]));
+              return false;
+            } else if (name === 'reverse') {
+              this.stack.push([...target].reverse());
               return false;
             }
           } else if (typeof target === 'string') {
@@ -562,6 +847,27 @@ export class AayuVM {
               return false;
             } else if (name === 'lower') {
               this.stack.push(target.toLowerCase());
+              return false;
+            } else if (name === 'trim') {
+              this.stack.push(target.trim());
+              return false;
+            } else if (name === 'split') {
+              this.stack.push(target.split(methodArgs[0] ?? ' '));
+              return false;
+            } else if (name === 'startsWith') {
+              this.stack.push(target.startsWith(methodArgs[0]));
+              return false;
+            } else if (name === 'endsWith') {
+              this.stack.push(target.endsWith(methodArgs[0]));
+              return false;
+            } else if (name === 'includes' || name === 'contains') {
+              this.stack.push(target.includes(methodArgs[0]));
+              return false;
+            } else if (name === 'replace') {
+              this.stack.push(target.replace(methodArgs[0], methodArgs[1]));
+              return false;
+            } else if (name === 'slice') {
+              this.stack.push(target.slice(methodArgs[0], methodArgs[1]));
               return false;
             }
           }
