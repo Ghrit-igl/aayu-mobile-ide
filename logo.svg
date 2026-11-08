@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 240" width="100%" height="240">
+  <defs>
+    <linearGradient id="bg_ide" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#051923"/>
+      <stop offset="100%" stop-color="#000814"/>
+    </linearGradient>
+    <linearGradient id="emerald_glow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+    <filter id="glow_ide">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="800" height="240" rx="16" fill="url(#bg_ide)" stroke="#0e3a47" stroke-width="2"/>
+  <g transform="translate(40, 40)">
+    <rect x="0" y="0" width="160" height="160" rx="20" fill="#08222c" stroke="url(#emerald_glow)" stroke-width="3" filter="url(#glow_ide)"/>
+    <rect x="45" y="30" width="70" height="100" rx="10" fill="none" stroke="#10b981" stroke-width="3"/>
+    <circle cx="80" cy="115" r="4" fill="#06b6d4"/>
+    <path d="M60 60 L75 75 L60 90" fill="none" stroke="#34d399" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="78" y1="90" x2="95" y2="90" stroke="#34d399" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="240" y="95" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="44" font-weight="900" fill="#ffffff" letter-spacing="1.5">
+    AAYU<tspan fill="#10b981">-MOBILE-IDE</tspan>
+  </text>
+  <text x="240" y="135" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="500" fill="#99f6e4">
+    Zero-Install Mobile IDE &amp; Progressive Web App with Live GitHub Sync
+  </text>
+  <text x="240" y="170" font-family="'Courier New', monospace" font-size="13" font-weight="700" fill="#06b6d4">
+    [Android APK Build] · [Offline Service Worker] · [Monaco / Prism Editor]
+  </text>
+</svg>

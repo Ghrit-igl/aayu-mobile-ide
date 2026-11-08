@@ -1,0 +1,5 @@
+{
+  "name": "AAYU Mobile IDE - Intent-to-Silicon for Android",
+  "description": "Production-oriented mobile IDE for the AAYU programming language, inspired by Pydroid 3. Features real AST & bytecode execution, native Android Kotlin/NDK architecture, starter gallery, Zero-to-Silicon tutorials, and release update manager.",
+  "version": "1.1.0"
+}
